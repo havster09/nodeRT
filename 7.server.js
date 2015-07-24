@@ -7,6 +7,12 @@ function handleHTTP(req,res) {
             });
             req.resume();
         }
+        else if (req.url == "/jquery.js") {
+            req.addListener("end",function(){
+                static_files.serve(req,res);
+            });
+            req.resume();
+        }
         else {
             res.writeHead(403);
             res.end();
@@ -16,6 +22,29 @@ function handleHTTP(req,res) {
         res.writeHead(403);
         res.end();
     }
+}
+
+function connection(socket) {
+
+    function disconnect() {
+        console.log("disconnected");
+    }
+
+    function getmsg(msg) {
+        io.sockets.emit("broadcast",msg);
+    }
+
+    function spy(move) {
+        socket.broadcast.emit("spy",move);
+    }
+
+    socket.on("disconnect",disconnect);
+    socket.on("msg",getmsg);
+    socket.on("spy",spy);
+
+    var intv = setInterval(function(){
+        socket.emit("hello",Math.random());
+    },1000);
 }
 
 
@@ -32,24 +61,8 @@ var
 
     io = require("socket.io").listen(httpserv);
 
-function handleIO(socket){
-    function disconnect(){
-        clearInterval(intv);
-        console.log("client disconnected");
-    }
-    console.log("client connected");
-    socket.on("disconnect",disconnect)
-    var intv = setInterval(function(){
-        socket.emit("hello",Math.random());
-    },1000);
+require("asynquence-contrib");
 
-    function getmsg(msg) {
-        io.sockets.emit("broadcast",msg);
-    }
-    socket.on("msg",getmsg);
-}
-
-io.on("connection",handleIO);
 
 // configure socket.io
 io.configure(function(){
@@ -63,8 +76,7 @@ io.configure(function(){
     ]);
 });
 
-require("asynquence-contrib");
 
 httpserv.listen(port, host);
 
-
+io.on("connection",connection);
